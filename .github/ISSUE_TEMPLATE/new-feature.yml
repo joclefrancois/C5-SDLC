@@ -1,0 +1,53 @@
+name: "New feature / new class"
+description: "A story that adds new behavior via a new class, module, or function — nothing existing is being modified."
+title: "[New] "
+labels: ["story", "new-feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **AI SDLC Level 2 reminder:** this story's Definition of Done includes AI-generated tests for the new code — see `docs/ai-generated-testing-standard.md`. Nobody needs to remind whoever implements this; this repo's Stop hook and CI gates enforce it.
+
+  - type: textarea
+    id: business-context
+    attributes:
+      label: Business context / why
+      description: What need does this address, and for whom?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: What must be true for this to be done?
+      placeholder: |
+        - Given ... when ... then ...
+        - ...
+    validations:
+      required: true
+
+  - type: input
+    id: proposed-class
+    attributes:
+      label: Proposed class / module / function name (if known)
+      placeholder: "e.g. PalindromeChecker.Palindrome, or js/src/palindrome.ts"
+    validations:
+      required: false
+
+  - type: input
+    id: location
+    attributes:
+      label: Where should it live? (folder/namespace)
+      placeholder: "dotnet/src/... or js/src/..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done (checked at story close-out, not required to open the issue)
+      options:
+        - label: Unit/integration/functional tests generated (AI-assisted) and reviewed, covering the new behavior — happy path, an edge case, and a failure path.
+        - label: PR opened using the repo's PR template with the Testing section filled in.
+        - label: Test-presence gate and coverage gate both green (or an approved exception cited).

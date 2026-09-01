@@ -1,0 +1,25 @@
+name: .NET Coverage Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Threshold/ThresholdType/ThresholdStat live in
+      # dotnet/tests/PalindromeChecker.Tests/PalindromeChecker.Tests.csproj
+      # (Coverlet's MSBuild integration) — this command fails the build
+      # below that threshold, identically to running it on a laptop.
+      - name: Test with coverage (fails below the csproj's Threshold)
+        run: >
+          dotnet test dotnet/tests/PalindromeChecker.Tests
+          --configuration Release
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura

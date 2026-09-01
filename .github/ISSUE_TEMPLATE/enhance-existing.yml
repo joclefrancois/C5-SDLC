@@ -1,0 +1,62 @@
+name: "Enhance / modify existing class"
+description: "A story that changes the behavior of code that already exists — a bug fix, an added rule, a refactor with behavior implications."
+title: "[Enhance] "
+labels: ["story", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **AI SDLC Level 2 reminder:** modifying existing code without updating its existing test is exactly the gap this repo's Stop hook and CI gate are built to catch — see `docs/ai-generated-testing-standard.md` §5a. Naming the exact file(s) below helps whoever (or whatever) implements this find the right test to update.
+
+  - type: input
+    id: existing-files
+    attributes:
+      label: Existing class(es) / file(s) affected
+      description: Name the specific file(s) being changed — this is what the test-pairing check looks for a matching test on.
+      placeholder: "e.g. dotnet/src/PalindromeChecker/Palindrome.cs, js/src/palindrome.ts"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+      description: What does the code do today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired-behavior
+    attributes:
+      label: Desired behavior change
+      description: What should it do instead, or in addition?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - Given ... when ... then ...
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: regression-risk
+    attributes:
+      label: Regression risk
+      description: What existing behavior must NOT change? (this becomes a test case too)
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done (checked at story close-out, not required to open the issue)
+      options:
+        - label: Existing test(s) for the affected file(s) reviewed and updated — not left alone — to cover the new behavior.
+        - label: A regression test exists for the "must not change" behavior noted above, if any.
+        - label: PR opened using the repo's PR template with the Testing section filled in.
+        - label: Test-presence gate and coverage gate both green (or an approved exception cited).

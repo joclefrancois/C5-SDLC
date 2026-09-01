@@ -1,0 +1,23 @@
+name: Test Presence Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-test-presence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # Same script the local Claude Code Stop hook uses
+      # (.claude/hooks/check_test_pairing.py) — one piece of pairing
+      # logic, run both locally and here, so they can't drift apart.
+      - name: Check source changes have matching test changes
+        run: python3 .claude/hooks/check_test_pairing.py --base origin/${{ github.base_ref }}

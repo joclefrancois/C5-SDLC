@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PalindromeChecker.Tests</RootNamespace>
+
+    <!-- AI SDLC Level 2 coverage gate — the team's chosen percentage for
+         this repo. Enforced by `dotnet test` itself (Coverlet's MSBuild
+         integration), the same way locally and in CI — see
+         docs/ai-generated-testing-standard.md §5b. Adjust this number
+         for your own repo; it is not meant to be copied verbatim. -->
+    <Threshold>70</Threshold>
+    <ThresholdType>line</ThresholdType>
+    <ThresholdStat>total</ThresholdStat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Versions current as of this PoC's authoring — run
+         `dotnet list package --outdated` after your first restore and
+         bump if newer patch releases exist. -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PalindromeChecker\PalindromeChecker.csproj" />
+  </ItemGroup>
+
+</Project>

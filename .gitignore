@@ -1,0 +1,12 @@
+# .NET
+dotnet/**/bin/
+dotnet/**/obj/
+*.user
+
+# Node
+js/node_modules/
+js/coverage/
+js/dist/
+
+# OS
+.DS_Store

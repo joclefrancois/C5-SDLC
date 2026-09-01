@@ -1,0 +1,21 @@
+name: JS/TS Coverage Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      # coverageThreshold lives in js/vitest.config.ts — this fails the
+      # job below that threshold, identically to running it locally.
+      - run: npm test -- --coverage
