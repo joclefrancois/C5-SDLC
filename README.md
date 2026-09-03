@@ -8,7 +8,7 @@ Full policy this repo demonstrates: [`docs/ai-generated-testing-standard.md`](do
 
 - **Story 1 (new class) is already implemented and passing**, in both stacks: `dotnet/src/PalindromeChecker/Palindrome.cs` + `dotnet/tests/PalindromeChecker.Tests/PalindromeTests.cs`, and `js/src/palindrome.ts` + `js/src/palindrome.test.ts`. Both check for an exact, case-sensitive palindrome. This is the repo's green baseline — it proves the gates pass when the standard is followed.
 - **Story 2 (modify that existing class) is deliberately left undone.** Its issue content is pre-written in [`docs/demo-story-2-issue.md`](docs/demo-story-2-issue.md). It asks for punctuation/case/whitespace-insensitive matching — a change to code that already exists and already has a test, which is exactly the case a coarse "did any test change" check would miss. Don't implement it while just poking around the repo; it's meant to be run live (see Demo 2 below).
-- **`feature/reverse-string` is a completed run-through of Demo 1**, kept open as a real example (source + tests + a green PR) rather than merged — `main` itself was never touched, so Demo 1 is still fresh for anyone forking this repo. See "Keeping `main` as a reusable baseline" below for why it's a branch/PR instead of a merge.
+- **`feature/reverse-string` is a completed run-through of Demo 1**, kept open as a real example (source + tests + a green PR) — not merged, since `main` is locked.
 
 ## 1. Create the repo and push this scaffold
 
@@ -46,20 +46,9 @@ Branch protection isn't set by pushing YAML — the workflows exist the moment y
 
 Until you do this, the gates run and report red/green on every PR, but a red PR can still technically be merged — that's the difference between "visible" and "enforced," worth calling out explicitly if you're using this PoC to make that point to stakeholders.
 
-## 3. Keeping `main` as a reusable, pristine baseline
+## 3. `main` is locked — fork the repo to run or merge a demo
 
-This repo is meant to be walked through by many different people over time, each running Demo 1 / Demo 2 from the same starting point. If any one of them merges their demo PR into `main`, the baseline changes for everyone after — Story 1 is no longer untouched, or Story 2 is no longer open — and the next person can't run the same demo anymore. That's the actual reason to lock `main`, independent of company size, plan tier, or whether the repo is personal or corporate:
-
-1. GitHub → your repo → **Settings → Branches → Add branch protection rule**, pattern `main`.
-2. Check **Lock branch** and save.
-
-A locked branch rejects *every* write — direct pushes, PR merges (any method), even an admin force-push — so it's a stronger guarantee than the required-status-checks setup in step 2 above (which still allows a merge once checks pass; a lock allows none, ever, until you uncheck it). This is also why `feature/reverse-string` in this repo was left as an open PR instead of merged: it's a real completed Demo 1 run, but `main` stays exactly as scaffolded so the story is still fresh for the next person.
-
-**Free-tier catch:** branch locking (like all branch protection) is free only on **public** repos. On a private repo it requires GitHub Pro/Team/Enterprise. If you're on a free personal account and want this for a private repo, your options are: upgrade to Pro, or make the repo public (acceptable for a PoC like this with no sensitive content, but weigh it for your own repo).
-
-**Only the "make it public" part is a free-tier workaround — the lock itself isn't.** On a corporate/organization GitHub account (Team or Enterprise), you'd apply this exact same lock, for this exact same repeatability reason, directly on a **private** repo — no visibility trade-off needed, since branch protection there isn't gated behind public visibility the way it is on a free personal account. This repo is public purely because that's the only way to get free branch locking on a personal account; it is not evidence that locking `main` is somehow unnecessary on a corporate repo. If anything, a corporate training/demo repo running through this with many employees over time would want this locked baseline even more than a single personal PoC does.
-
-**Practicing the demo without ever touching this repo's `main`:** since `main` is locked, the way to actually *run* Demo 1/Demo 2 yourself — not just read about them — is to fork the repo first:
+**`main` in this repo is locked: no direct pushes, and no PR can be merged into it, by anyone.** If you just want to read through Demo 1 / Demo 2, you don't need to do anything differently. If you want to actually *run* a demo yourself — commit code, open a PR, and merge it — fork the repo first:
 
 ```bash
 gh repo fork <owner>/ai-sdlc-level2-poc --clone
@@ -68,7 +57,7 @@ cd ai-sdlc-level2-poc
 
 Your fork is an independent repository — it copies the code and history but **not** the branch protection settings, so your fork's `main` is unlocked by default. Work there: create a branch, prompt Claude Code with a demo story, let the Stop hook and CI gates do their thing, and merge into *your* fork's `main` freely. Delete and re-fork whenever you want a clean slate again; the upstream repo's `main` never moves.
 
-## 5. Demo 1 — new class, no test-related prompt
+## 4. Demo 1 — new class, no test-related prompt
 
 This shows the Stop hook and CI catching a **missing** test on brand-new code.
 
@@ -77,7 +66,7 @@ This shows the Stop hook and CI catching a **missing** test on brand-new code.
 3. Prompt Claude Code with exactly that. Watch it create the new source file and — before it can say "done" — get blocked by the Stop hook with *"No test file found anywhere for: ..."*. It writes the matching test file, then finishes.
 4. Commit, push a branch, open a PR with the template. All three checks should go green: test-presence (new file paired with a new test), and both coverage gates (assuming the new code is actually tested — that's what makes them stay green).
 
-## 6. Demo 2 — modifying an existing class
+## 5. Demo 2 — modifying an existing class
 
 This is the case a naive check misses, and the reason for the more careful per-file pairing logic described in the standard's §5a. Content is pre-written in [`docs/demo-story-2-issue.md`](docs/demo-story-2-issue.md).
 
@@ -89,7 +78,7 @@ This is the case a naive check misses, and the reason for the more careful per-f
 
 **Optional variant, if you want to show the check actually catching something:** on step 2, ask Claude to also fix an unrelated typo in a comment somewhere in the *test* file, but tell it not to add coverage for the new behavior yet. The hook still blocks — touching *some* test file isn't enough, it has to be the paired one with the new behavior actually covered (the hook can't verify "actually covered," but a reviewer applying §6 in the PR can, and should).
 
-## 6a. Doing the same demo through the GitHub issue templates directly
+## 5a. Doing the same demo through the GitHub issue templates directly
 
 Both `.github/ISSUE_TEMPLATE/*.yml` files render as structured forms under Issues → New issue. Filling one out and pasting its rendered body into Claude Code is the realistic version of the workflow (a developer picks up a ticket, not a raw prompt) — worth doing at least once during a stakeholder demo instead of the shortcut in step 2 above.
 
@@ -125,7 +114,7 @@ js/
 
 ## Known gaps in this PoC (be upfront about these if presenting it)
 
-- **This repo's own `main` is public and locked**, so that many different people can each run Demo 1/Demo 2 against the same untouched baseline over time (see "Keeping `main` as a reusable baseline" above) — the *lock* is the right call on a corporate account too, for the same repeatability reason. The only free-tier-specific bit is *public visibility*: it's the only way to get free branch protection on a personal account. On GitHub Pro/Team/Enterprise, apply the same lock directly to a **private** repo — no visibility trade-off needed. (Required status checks, separately, are typically pre-existing org-wide policy on a corporate account, not something each repo sets up from scratch.)
+- **`main` is locked** (see "§3. `main` is locked" above) — fork the repo if you want to run and merge a demo yourself.
 - **.NET code in this repo was written but not compiled/run in the environment that built this scaffold** (no network access to install the .NET SDK there). Run `dotnet test dotnet/tests/PalindromeChecker.Tests` yourself as a first step after cloning, before the live demo, to confirm it builds clean — the JS/TS side *was* installed and run (`npm test -- --coverage`, 8/8 passing, 100% coverage, and the threshold gate was confirmed to actually fail the build when coverage drops).
 - NuGet package versions in `PalindromeChecker.Tests.csproj` were current as of this scaffold's authoring — run `dotnet list package --outdated` after your first restore and bump if newer patch releases exist.
 - The CI workflows always run both stack's coverage jobs on every PR, even one that only touched the other stack. That's a deliberate simplification for a two-stack demo repo this small — path-filtering workflow triggers (`on.pull_request.paths`) combined with *required* status checks has a well-known GitHub gotcha (a check that never runs because its paths didn't match can block a PR forever, since GitHub waits for a status that's never coming). Worth knowing about before applying this pattern to a much larger monorepo, where always running everything stops being cheap — see GitHub's docs on required checks and skipped workflows before optimizing this.
