@@ -1,6 +1,7 @@
 # .NET
 dotnet/**/bin/
 dotnet/**/obj/
+dotnet/**/*.cobertura.xml
 *.user
 
 # Node
