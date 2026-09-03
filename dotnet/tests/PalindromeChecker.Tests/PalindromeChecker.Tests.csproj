@@ -19,8 +19,8 @@
 
   <ItemGroup>
     <!-- Versions current as of this PoC's authoring — run
-         `dotnet list package --outdated` after your first restore and
-         bump if newer patch releases exist. -->
+         `dotnet list package` with the outdated flag after your first
+         restore and bump if newer patch releases exist. -->
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

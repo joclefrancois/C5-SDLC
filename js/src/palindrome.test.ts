@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { isPalindrome } from './palindrome';
 
 describe('isPalindrome', () => {
-  it.each(['racecar', 'level', 'a', ''])(
+  it.each(['racecar', 'level', 'a', '', 'A man, a plan, a canal: Panama', 'Was it a car or a cat I saw?'])(
     'returns true for palindromic input %j',
     (value) => {
       expect(isPalindrome(value)).toBe(true);
