@@ -34,6 +34,8 @@ git push -u origin main
 
 ## 2. Turn the CI gates into required status checks
 
+**Note on how this maps to a real corporate repo:** this section assumes a personal free-tier GitHub account, so it walks through the manual UI steps. On a corporate/organization GitHub account (Team or Enterprise), assume this is *already done* — branch protection with required status checks on `main` (and often org-wide rulesets applied to every new repo automatically) is standard baseline configuration set once by the org/platform team, not something each developer configures per-repo. Treat steps 1-5 below as "what that configuration actually consists of," not as a setup task you'd normally repeat.
+
 Branch protection isn't set by pushing YAML — the workflows exist the moment you push, but nothing blocks a merge until you say so:
 
 1. GitHub → your repo → **Settings → Branches → Add branch protection rule**.
@@ -54,6 +56,8 @@ If you want people to be able to run Demo 1 / Demo 2 repeatedly against a clean 
 A locked branch rejects *every* write — direct pushes, PR merges (any method), even an admin force-push — so it's a stronger guarantee than the required-status-checks setup in step 2 above (which still allows a merge once checks pass; a lock allows none, ever, until you uncheck it). This is also why `feature/reverse-string` in this repo was left as an open PR instead of merged: it's a real completed Demo 1 run, but `main` stays exactly as scaffolded so the story is still fresh for the next person.
 
 **Free-tier catch:** branch locking (like all branch protection) is free only on **public** repos. On a private repo it requires GitHub Pro/Team/Enterprise. If you're on a free personal account and want this for a private repo, your options are: upgrade to Pro, or make the repo public (acceptable for a PoC like this with no sensitive content, but weigh it for your own repo).
+
+**This is a free-tier workaround, not the assumed corporate setup.** On a corporate/organization GitHub account, none of this "make it public to get free branch protection" tradeoff applies — private repos on Team/Enterprise get full branch protection (including locking, and org-wide rulesets that apply the same policy to every repo automatically) without needing public visibility. Assume a corporate repo running this standard would keep `main` private, protected by org policy from day one, with no per-repo public/private juggling required. This repo is public and manually locked purely because it's hosted on a free personal account.
 
 **Practicing the demo without ever touching this repo's `main`:** since `main` is locked, the way to actually *run* Demo 1/Demo 2 yourself — not just read about them — is to fork the repo first:
 
@@ -121,7 +125,7 @@ js/
 
 ## Known gaps in this PoC (be upfront about these if presenting it)
 
-- **This repo's own `main` is public and locked** so it stays a pristine baseline (see "Keeping `main` as a reusable baseline" above) — that trade-off (public visibility, in exchange for free-tier branch locking) was made for this specific PoC and isn't a requirement of the standard itself; a private repo works fine if you're on GitHub Pro/Team/Enterprise, or if you're comfortable relying on required-status-checks alone without a hard lock.
+- **This repo's own `main` is public and locked** so it stays a pristine baseline (see "Keeping `main` as a reusable baseline" above) — that trade-off (public visibility, in exchange for free-tier branch locking) was made for this specific PoC and isn't a requirement of the standard itself; a private repo works fine if you're on GitHub Pro/Team/Enterprise, or if you're comfortable relying on required-status-checks alone without a hard lock. **On a corporate/organization account, assume none of this juggling is needed** — private-repo branch protection and required status checks on `main` are standard, pre-existing configuration there, not something this standard has to introduce.
 - **.NET code in this repo was written but not compiled/run in the environment that built this scaffold** (no network access to install the .NET SDK there). Run `dotnet test dotnet/tests/PalindromeChecker.Tests` yourself as a first step after cloning, before the live demo, to confirm it builds clean — the JS/TS side *was* installed and run (`npm test -- --coverage`, 8/8 passing, 100% coverage, and the threshold gate was confirmed to actually fail the build when coverage drops).
 - NuGet package versions in `PalindromeChecker.Tests.csproj` were current as of this scaffold's authoring — run `dotnet list package --outdated` after your first restore and bump if newer patch releases exist.
 - The CI workflows always run both stack's coverage jobs on every PR, even one that only touched the other stack. That's a deliberate simplification for a two-stack demo repo this small — path-filtering workflow triggers (`on.pull_request.paths`) combined with *required* status checks has a well-known GitHub gotcha (a check that never runs because its paths didn't match can block a PR forever, since GitHub waits for a status that's never coming). Worth knowing about before applying this pattern to a much larger monorepo, where always running everything stops being cheap — see GitHub's docs on required checks and skipped workflows before optimizing this.
