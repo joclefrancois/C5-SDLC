@@ -1,12 +1,6 @@
 /**
- * Checks whether a string reads the same forwards and backwards.
- *
- * Baseline (Story 1): exact, case-sensitive comparison — no punctuation
- * or whitespace normalization. Story 2 in this PoC's demo asks for
- * punctuation/whitespace/case-insensitive matching (e.g. "A man, a
- * plan, a canal: Panama") — that's an intentional gap in this baseline,
- * left open so the demo can show the "modify an existing module" flow
- * live. See the repo README for the walkthrough.
+ * Checks whether a string reads the same forwards and backwards,
+ * ignoring case, spaces, and punctuation.
  *
  * @throws {TypeError} if `value` is null or undefined.
  */
@@ -15,11 +9,13 @@ export function isPalindrome(value: string): boolean {
     throw new TypeError('isPalindrome: value must not be null or undefined');
   }
 
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
   let left = 0;
-  let right = value.length - 1;
+  let right = normalized.length - 1;
 
   while (left < right) {
-    if (value[left] !== value[right]) {
+    if (normalized[left] !== normalized[right]) {
       return false;
     }
     left++;

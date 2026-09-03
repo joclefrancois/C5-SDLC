@@ -13,6 +13,8 @@ public class PalindromeTests
     [InlineData("level")]
     [InlineData("a")]      // edge case: single character
     [InlineData("")]       // edge case: empty string
+    [InlineData("A man, a plan, a canal: Panama")]
+    [InlineData("Was it a car or a cat I saw?")]
     public void IsPalindrome_PalindromicInput_ReturnsTrue(string value)
     {
         Assert.True(_sut.IsPalindrome(value));
