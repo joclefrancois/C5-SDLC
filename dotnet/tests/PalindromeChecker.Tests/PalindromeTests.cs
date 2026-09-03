@@ -13,6 +13,9 @@ public class PalindromeTests
     [InlineData("level")]
     [InlineData("a")]      // edge case: single character
     [InlineData("")]       // edge case: empty string
+    [InlineData("Racecar")] // case-insensitive now: differs only in case, so it IS a palindrome
+    [InlineData("A man, a plan, a canal: Panama")]
+    [InlineData("Was it a car or a cat I saw?")]
     public void IsPalindrome_PalindromicInput_ReturnsTrue(string value)
     {
         Assert.True(_sut.IsPalindrome(value));
@@ -20,7 +23,6 @@ public class PalindromeTests
 
     [Theory]
     [InlineData("hello")]
-    [InlineData("Racecar")] // baseline is case-sensitive: differs in case, so not a palindrome by this rule
     [InlineData("ab")]
     public void IsPalindrome_NonPalindromicInput_ReturnsFalse(string value)
     {

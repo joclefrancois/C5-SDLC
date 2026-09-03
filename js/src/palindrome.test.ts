@@ -2,16 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { isPalindrome } from './palindrome';
 
 describe('isPalindrome', () => {
-  it.each(['racecar', 'level', 'a', ''])(
-    'returns true for palindromic input %j',
-    (value) => {
-      expect(isPalindrome(value)).toBe(true);
-    },
-  );
+  it.each([
+    'racecar',
+    'level',
+    'a',
+    '',
+    'Racecar', // case-insensitive now: differs only in case, so it IS a palindrome
+    'A man, a plan, a canal: Panama',
+    'Was it a car or a cat I saw?',
+  ])('returns true for palindromic input %j', (value) => {
+    expect(isPalindrome(value)).toBe(true);
+  });
 
-  it.each(['hello', 'Racecar', 'ab'])(
-    // "Racecar" is included deliberately: the baseline is case-sensitive,
-    // so it differs in case and is not a palindrome by this rule.
+  it.each(['hello', 'ab'])(
     'returns false for non-palindromic input %j',
     (value) => {
       expect(isPalindrome(value)).toBe(false);
