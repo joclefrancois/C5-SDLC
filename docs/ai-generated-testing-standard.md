@@ -1,7 +1,7 @@
 # AI-Generated Testing Standard
 ### Making AI-generated unit, integration, and functional tests the default — SDLC Level 2
 
-**Owner:** Jocelyn Lefrancois, Harris E-commerce
+**Owner:** Jocelyn Lefrancois
 **Status:** Draft for review
 **Applies to:** All product teams writing unit, integration, or functional tests (.NET/C# and JavaScript/TypeScript stacks covered explicitly; the pattern generalizes to any stack)
 
@@ -108,6 +108,103 @@ jobs:
 ```
 
 This is intentionally a *presence-and-pairing* check, not a coverage-quality check — it cannot verify the test is good, only that the right one exists and was touched. That gap is covered by human review (Anchor 2) and the quality bar in §4/§6. It also can't verify an existing test's assertions still make sense after the change (only that it was edited at all) — same limitation, same fix: a reviewer reading the diff.
+
+**Adapting the pattern for integration tests:** teams that separate integration tests from unit tests do it differently — some suffix the file (`FooIntegrationTests.cs`), some rely entirely on a test-framework category/trait on individual methods within a file that otherwise looks like any other test file, some do both. There's no single regex this standard can hardcode for that, so this is a technique to adapt, not a convention to copy verbatim:
+
+1. Loosen the presence pattern from an exact match (`^FooTests?\.cs$`) to a permissive one (`^Foo.*Tests?\.cs$`) so it catches both `FooTests.cs` and `FooIntegrationTests.cs` — or whatever your team's actual suffix is.
+2. Within whatever file(s) that pattern finds, search the file's *content* for your test library's own category marker, to tell integration tests apart from unit tests living in the same file. What that marker looks like, and what to search for, per library:
+
+   **xUnit** — a `[Trait]` attribute on the method:
+   ```csharp
+   public class CustomerServiceIntegrationTests
+   {
+       [Fact]
+       [Trait("Category", "Integration")]
+       public async Task CreateCustomer_ViaHttpApi_PersistsToDatabase()
+       {
+           // ...
+       }
+   }
+   ```
+   Detect with: `grep -E '\[Trait\("Category",\s*"Integration"\)\]' CustomerServiceIntegrationTests.cs` (or the equivalent `re.search` in Python).
+
+   **NUnit** — a `[Category]` attribute:
+   ```csharp
+   [TestFixture]
+   public class CustomerServiceIntegrationTests
+   {
+       [Test]
+       [Category("Integration")]
+       public void CreateCustomer_ViaHttpApi_PersistsToDatabase()
+       {
+           // ...
+       }
+   }
+   ```
+   Detect with: `grep -E '\[Category\("Integration"\)\]'`.
+
+   **MSTest** — a `[TestCategory]` attribute:
+   ```csharp
+   [TestClass]
+   public class CustomerServiceIntegrationTests
+   {
+       [TestMethod]
+       [TestCategory("Integration")]
+       public void CreateCustomer_ViaHttpApi_PersistsToDatabase()
+       {
+           // ...
+       }
+   }
+   ```
+   Detect with: `grep -E '\[TestCategory\("Integration"\)\]'`.
+
+   **Jest/Vitest** — no built-in trait system, so use a naming convention instead, e.g. a labeled `describe` block or a comment tag:
+   ```ts
+   describe('Integration: customer API', () => {
+     it('creates a customer via HTTP and persists it to the database', async () => {
+       // ...
+     });
+   });
+
+   // or, per-test:
+   // @integration
+   it('creates a customer via HTTP and persists it to the database', async () => {
+     // ...
+   });
+   ```
+   Detect with: `grep -E "describe\(['\"]Integration:|// @integration"`.
+
+**Where this would actually live:** not as a one-off shell command run by hand — as a new helper function in `check_test_pairing.py` itself, next to the existing `test_name_patterns()` and `is_test_file()`, so it's the same script (and the same two callers — the local Stop hook and the CI gate) doing the checking, not a second piece of logic that can drift out of sync with the first:
+
+```python
+# Illustrative — not wired into this repo's check_test_pairing.py, since
+# nothing here has an integration-test-worthy dependency yet. Shows where
+# this slots into the existing script's structure.
+
+INTEGRATION_MARKER_PATTERNS = {
+    ".cs": r'\[Trait\("Category",\s*"Integration"\)\]|\[Category\("Integration"\)\]|\[TestCategory\("Integration"\)\]',
+    ".ts": r"describe\(['\"]Integration:|//\s*@integration",
+    ".tsx": r"describe\(['\"]Integration:|//\s*@integration",
+    ".js": r"describe\(['\"]Integration:|//\s*@integration",
+    ".jsx": r"describe\(['\"]Integration:|//\s*@integration",
+}
+
+
+def has_integration_marker(file_path: str) -> bool:
+    """True if file_path's content contains this team's integration-test marker."""
+    pattern = INTEGRATION_MARKER_PATTERNS.get(pathlib.PurePosixPath(file_path).suffix)
+    if not pattern:
+        return False
+    try:
+        content = pathlib.Path(file_path).read_text(encoding="utf-8", errors="ignore")
+    except FileNotFoundError:
+        return False
+    return bool(re.search(pattern, content))
+```
+
+Then in `main()`, after finding candidate files with the loosened filename pattern (step 1 above), filter them through `has_integration_marker()` before deciding whether an integration test was actually touched — the same way `main()` already filters `universe_of_files()` through `test_name_patterns()` for the unit-test check. Both checks end up living in one script, run by both callers, which is the whole point of §5a's "one piece of logic, run twice" design.
+
+Whoever (or whatever) is deciding "does an integration test already exist / need updating for this change" — a human reviewer, Claude Code, or a future extension of `check_test_pairing.py` as shown above — should use both steps together: the loose filename pattern to find candidate files, then the category-marker search to confirm what's actually inside them. Pick the marker that matches your team's real test library and document it in your own repo's `CLAUDE.md`/`CONTRIBUTING.md`; this is a per-team adaptation, not something to standardize company-wide the way the coverage threshold in §5b is.
 
 ### 5b. Gate: coverage threshold, per stack
 

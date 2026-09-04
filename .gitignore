@@ -2,6 +2,7 @@
 dotnet/**/bin/
 dotnet/**/obj/
 dotnet/**/*.cobertura.xml
+dotnet/.vs/
 *.user
 
 # Node
