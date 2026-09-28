@@ -7,6 +7,104 @@
 
 ---
 
+## How it actually works, in one page
+
+Six things reference the same rule. Each one catches a different way "add tests" can quietly not happen:
+
+| Piece | What it is | Runs when | What it stops |
+|---|---|---|---|
+| DoD line (§3) | A checklist item on the story | Story close-out | A story marked "done" with no test |
+| `generate-tests` skill / CLAUDE.md instructions | Guidance an AI tool *chooses* to follow | Whenever the model decides to run it (or is told to) | Nothing by itself — see below |
+| Stop hook, local (§5a) | A script Claude Code runs automatically before it's allowed to end a turn | Every turn, unconditionally | A coding session ending with an untested change |
+| CI Test Presence Gate (§5a) | The same script, run again against the PR's full diff | Every PR | A PR merging with an untested change — even one that never went through an AI tool at all |
+| Coverage gate (§5b) | A threshold the test runner itself enforces | Every PR | Coverage quietly dropping, even if a test technically exists |
+| PR template + reviewer (§4, §6) | A checklist plus an explicit "don't approve" instruction | Every PR review | Tests that exist and pass but don't actually assert anything meaningful |
+
+### Start to finish, as a sequence
+
+Same information as the table above, but as a timeline — useful for seeing exactly where a change can get bounced back, and how many times, before it reaches `main`. (GitHub renders this diagram directly in the file — no extra tooling needed to view it.)
+
+```mermaid
+sequenceDiagram
+    actor Dev as Developer
+    participant Claude as Claude Code
+    participant Hook as Stop Hook (local)
+    participant GH as GitHub PR
+    participant CI as CI Gates
+    participant Rev as Reviewer
+
+    Dev->>Claude: Prompt: add or change behavior
+    Claude->>Claude: Edit source file(s)
+    Claude->>Hook: Attempt to end the turn
+    activate Hook
+    Hook->>Hook: Diff vs HEAD, check each source file for its paired test
+    alt Test missing or not updated
+        Hook-->>Claude: Block, exit code 2, reason printed
+        Claude->>Claude: Add or update the paired test
+        Claude->>Hook: Attempt to end the turn again
+    else Paired test present and touched
+        Hook-->>Claude: Allow, exit code 0
+    end
+    deactivate Hook
+    Claude-->>Dev: Turn ends, source and test both ready
+
+    Dev->>GH: Push branch, open PR (template auto-filled)
+    GH->>CI: Trigger required status checks
+    activate CI
+    CI->>CI: Test Presence Gate (same script, run against the full PR diff)
+    CI->>CI: Coverage Gate (.NET and JS/TS thresholds)
+    alt Any gate fails
+        CI-->>GH: Status check red
+        GH-->>Dev: PR blocked from merging
+        Dev->>Claude: Fix and push again (loop back to the top)
+    else All gates pass
+        CI-->>GH: Status checks green
+    end
+    deactivate CI
+
+    GH->>Rev: Ready for review
+    Rev->>Rev: Read the diff against the Quality Bar, section 6
+    alt Assertions are trivial or don't cover the change
+        Rev-->>GH: Request changes, cites section 6
+        Dev->>Claude: Revise the tests
+    else Tests are meaningful
+        Rev->>GH: Approve
+        GH->>GH: Merge to main
+    end
+```
+
+Everything above the reviewer's step is **presence** — automated, and only checking that a test exists and was paired with the right file. The reviewer reading against the Quality Bar (§6) is the only **quality** check in the whole flow, and nothing upstream of it can substitute for it.
+
+### Why a SKILL.md (or a CLAUDE.md instruction) alone isn't enough
+
+A skill is something the AI does because it chose to. That's real value — it shapes *how well* the tests get written — but on its own it has three gaps a script doesn't:
+
+- **It only runs if invoked.** Proactively by the model, or via a slash command. Nothing forces that to happen, and a distracted or context-limited session can simply skip it.
+- **It can't verify anything after the fact.** No exit code, nothing that blocks the turn or the merge if it didn't run.
+- **It doesn't cover non-AI changes.** A human editing code by hand, a different tool, or a direct push never sees the skill at all.
+
+That's why the Stop hook and the CI gate exist as a second, independent layer underneath it: plain scripts with real exit codes, running outside the model's control, checking the actual `git diff` rather than trusting that guidance was followed. The skill is the "how to do it well" layer; the hook and CI gate are the "it happened, period" layer — and only the second one is unskippable.
+
+---
+
+## Pick what to turn on — this is a menu, not a mandate
+
+Every repo is different, and none of the pieces above depend on all the others being present. Turn on whichever fit your repo's risk and the team's tolerance for friction — adopting one or two is still a real improvement over adopting none. "Level 2" (the ladder below) specifically means *all three anchors are live together*; nothing requires a repo to reach Level 2 to benefit from part of this.
+
+| Component | What you (the repo owner) decide | Where you set it | Minimal steps to turn it on, by itself | If you skip it |
+|---|---|---|---|---|
+| DoD line (§3) | Exact wording; whether it's repo-wide or per-story | Jira/Azure Boards template | Paste the line from §3 into your team's DoD template. No code change, nothing to merge. | No standing reminder — relies entirely on people remembering |
+| PR template block (§4) | Wording; which exceptions are listed | `.github/pull_request_template.md` | Create that file if it doesn't exist, paste the block from §4 in. One file, no CI. | No forcing function for reviewers to look for tests |
+| Stop hook, local (§5a) | On/off; the escape hatch (`SKIP_TEST_GATE=1`); which file extensions/naming pattern count as "source" vs. "test" | `.claude/settings.json` (registers it), `check_test_pairing.py`'s `SOURCE_EXTENSIONS` and `test_name_patterns()` | Copy `.claude/hooks/check-tests.sh` and `check_test_pairing.py` from this repo into yours; copy the `hooks.Stop` block from `.claude/settings.json` §Appendix step 7. Works with no CI change — it only affects local Claude Code sessions. | Nothing catches a missing test locally — only the CI gate (if that's on) would still catch it, later |
+| CI Test Presence Gate (§5a) | Warn-only vs. a required (blocking) status check; which branches it runs on | Branch protection settings; `test-presence-gate.yml`'s `on.pull_request.branches` | Copy `check_test_pairing.py` (same file the hook above uses — copy it once, not twice) and `.github/workflows/test-presence-gate.yml`. Leave it as a normal (non-required) check first; only tick it under Settings → Branches → required status checks once it's run clean for a while. Works with no local hook installed. | A PR can merge with zero test changes |
+| Coverage gate (§5b) | The threshold number; metric (line/branch/method); warn-only vs. blocking; total vs. diff coverage | `.csproj` `<Threshold>` / `jest.config.js` or `vitest.config.ts` `coverageThreshold`; branch protection | Measure your current coverage first (don't guess), set `<Threshold>`/`coverageThreshold` at or just below that baseline, copy the matching workflow from §5b. Add as a required status check once it's been green for a bit — see §10's rollout phasing. | No floor on coverage — a paired-but-trivial test still satisfies everything else |
+| Integration-test marker (§5a, "Adapting the pattern") | Which trait/category/naming convention your team already uses (xUnit `[Trait]`, NUnit `[Category]`, MSTest `[TestCategory]`, a Jest/Vitest naming convention) | `check_test_pairing.py`, once you wire it in per §5a | Not a copy-paste — a small code change to your own `check_test_pairing.py`: loosen the filename pattern, add a marker-detection function, filter with it in `main()`. §5a has the exact snippet per test library. Only worth doing once you actually have integration tests to distinguish. | Integration tests aren't told apart from unit tests by the gate at all |
+| Exceptions list (§7) | Which categories are pre-approved to skip tests, beyond the default four | This document, or your repo's own copy of it | Edit §7's list (or the equivalent section in your `CONTRIBUTING.md`) to add/remove categories for your team. Text-only. | Every skip needs a one-off tech-lead conversation instead of a citable rule |
+
+**Lowest-effort starting point:** just the PR template block (§4) — a text file, no CI, no branch protection, and it still puts the question in front of every reviewer. Add the Stop hook and CI gate once the team is comfortable; those are the pieces that stop the rule depending on anyone remembering it. For a repo starting from scratch, the Appendix at the end of this document gives the same steps in a suggested full-adoption order — use it if you're taking everything, use this table if you're taking a subset.
+
+---
+
 ## 1. Why this document exists
 
 The task board instruction was specific: *"Default means it happens without anyone choosing to."* A practice that lives only in a wiki page, a Slack reminder, or a senior engineer's personal habit is not a default — it's a preference, and preferences decay the moment that person is busy, on vacation, or off the team. To count as SDLC Level 2 ("AI-generated tests are default, not a habit of whoever likes it"), the practice has to be anchored somewhere that fires automatically, for everyone, every time. This document names three anchors and gives the exact wording, templates, and CI configuration to install them:
@@ -37,7 +135,9 @@ This document gets teams to Level 2 and sets up the metrics Level 3 will need, b
 
 **Not in scope / exempt by default:** pure documentation changes, config-only changes with no logic branches, generated code (e.g., scaffolds, migrations) that has no independent logic to test, and hotfixes under the incident process (see §7, Exceptions).
 
-**What "AI-generated" does *not* mean:** tests an engineer pastes from AI output and merges unread. The standard is AI-generated, human-verified — the AI produces the first draft and the volume, a human confirms the assertions are actually meaningful (see §4, Quality Bar). A test suite that hits a coverage number but asserts nothing meaningful fails this standard even if a CI coverage gate is green. This is why the standard leans on three anchors instead of one: CI can check *that* a test file changed and coverage held; it can't fully check *that the test is good* — that's what the PR-template question and reviewer sign-off are for.
+**What "AI-generated" does *not* mean:** tests an engineer pastes from AI output and merges unread. The standard is AI-generated, human-verified — the AI produces the first draft and the volume, a human confirms the assertions are actually meaningful (see §6, Quality Bar). A test suite that hits a coverage number but asserts nothing meaningful fails this standard even if a CI coverage gate is green. This is why the standard leans on three anchors instead of one: CI can check *that* a test file changed and coverage held; it can't fully check *that the test is good* — that's what the PR-template question and reviewer sign-off are for.
+
+Deciding *which* of these anchors to actually turn on for a given repo is a separate, per-repo call — see "Pick what to turn on" above.
 
 ---
 
